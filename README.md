@@ -1,4 +1,4 @@
 # xmmx_photolights
 Photography Lights Script Version Checker
 
-https://youtu.be/dPC9kqhdXGc?si=2ASSrh5GP68_1mas
+[![Watch the video](https://img.youtube.com/vi/dPC9kqhdXGc/maxresdefault.jpg)](https://www.youtube.com/watch?v=dPC9kqhdXGc "Watch on YouTube")
