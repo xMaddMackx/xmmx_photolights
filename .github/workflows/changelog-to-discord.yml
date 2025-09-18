@@ -2,7 +2,7 @@ name: Changelog → Discord
 
 on:
   push:
-    branches: [main]            # change if your default branch differs
+    branches: [main]
     paths:
       - 'CHANGELOG.md'
 
@@ -14,17 +14,26 @@ jobs:
 
       # Extract the newest section (first "## " block) from CHANGELOG.md
       - id: extract
-        name: Extract latest changelog section
+        shell: bash
         run: |
-          awk 'BEGIN{p=0}/^##[[:space:]]/{if(p)exit;p=1} p{print}' CHANGELOG.md > latest.md
+          set -eo pipefail
+          awk 'BEGIN{p=0}/^##[[:space:]]/{if(p)exit;p=1} p{print}' CHANGELOG.md > latest.md || true
           # Fallback if no "## " headings: last 100 lines
           if [ ! -s latest.md ]; then tail -n 100 CHANGELOG.md > latest.md; fi
-          # Title = first line without leading "## "
-          echo "title=$(head -n1 latest.md | sed 's/^##[[:space:]]*//')" >> "$GITHUB_OUTPUT"
-          # Body = everything after the first line (multiline output)
-          echo "description<<'EOF'" >> "$GITHUB_OUTPUT"
-          sed -e '1d' latest.md >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # Single-line title output
+          title="$(head -n1 latest.md | sed 's/^##[[:space:]]*//')"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+
+          # Prepare a trimmed description to keep embeds safe (<4096 chars)
+          tail -n +2 latest.md | head -c 3800 > description.txt
+
+          # Proper multiline output (UNQUOTED delimiter; closing token alone on a line)
+          {
+            echo "description<<EOF"
+            cat description.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Post to Discord
         uses: tsickert/discord-webhook@v7.0.0
