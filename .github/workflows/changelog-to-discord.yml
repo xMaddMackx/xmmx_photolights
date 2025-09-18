@@ -2,9 +2,9 @@ name: Changelog → Discord
 
 on:
   push:
-    branches: [main]
+    branches: [main]          # change if your default branch differs
     paths:
-      - 'CHANGELOG.md'
+      - 'CHANGELOG.md'        # use '**/CHANGELOG.md' for monorepos
 
 jobs:
   notify:
@@ -12,41 +12,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Grab the newest section (first "## " block) from CHANGELOG.md
       - name: Extract latest changelog section
         run: |
-          awk 'BEGIN{p=0}/^##[[:space:]]/{if(p)exit;p=1} p{print}' CHANGELOG.md > latest.md || true
+          # Grab the newest section (first "## " block). Fallback: last 100 lines.
+          awk 'BEGIN{p=0}/^##[[:space:]]/{if(p)exit;p=1} p' CHANGELOG.md > latest.md || true
           [ -s latest.md ] || tail -n 100 CHANGELOG.md > latest.md
 
-      # Build the Discord webhook JSON payload (no outputs/env files needed)
-      - name: Build webhook payload
+      - name: Build JSON payload
         run: |
-          python3 - <<'PY' > payload.json
+          python3 - <<'PY'
           import os, json
           title = "Changelog Update"
           desc = ""
-          with open("latest.md", "r", encoding="utf-8", errors="ignore") as f:
-              lines = f.read().splitlines()
-          if lines:
-              title = lines[0].lstrip("# ").strip() or title
-              desc = "\n".join(lines[1:]) if len(lines) > 1 else ""
-          desc = desc[:3800]  # keep under Discord's ~4096-char embed desc limit
-          repo = os.environ.get("GITHUB_REPOSITORY","")
-          sha  = os.environ.get("GITHUB_SHA","")
+          try:
+              with open("latest.md", "r", encoding="utf-8", errors="ignore") as f:
+                  lines = f.read().splitlines()
+              if lines:
+                  title = (lines[0].lstrip("# ").strip() or title)[:256]    # Discord title limit ≈256
+                  desc  = "\n".join(lines[1:]) if len(lines) > 1 else ""
+          except FileNotFoundError:
+              pass
+          desc = desc[:3800]  # keep under Discord embed description limit (~4096)
           payload = {
-            "embeds": [{
-              "title": title,
-              "description": desc,
-              "url": f"https://github.com/{repo}/commit/{sha}"
-            }]
+              "embeds": [{
+                  "title": title,
+                  "description": desc,
+                  "url": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY','')}/commit/{os.environ.get('GITHUB_SHA','')}"
+              }]
           }
-          print(json.dumps(payload))
+          with open("payload.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False)
           PY
 
       - name: Post to Discord
-        uses: tsickert/discord-webhook@v7.0.0
-        with:
-          webhook-url: ${{ secrets.WEBHOOK_URL }}
-          username: "Changelog Bot"
-          raw-data: payload.json         # send our JSON directly
-          filename: latest.md            # also attach the full text
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          curl -s -H "Content-Type: application/json" \
+               -X POST -d @payload.json \
+               "$WEBHOOK_URL"
