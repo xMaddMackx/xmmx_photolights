@@ -12,35 +12,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Extract the newest section (first "## " block) from CHANGELOG.md
-      - id: extract
-        shell: bash
+      # Grab the newest section (first "## " block) from CHANGELOG.md
+      - name: Extract latest changelog section
         run: |
-          set -eo pipefail
           awk 'BEGIN{p=0}/^##[[:space:]]/{if(p)exit;p=1} p{print}' CHANGELOG.md > latest.md || true
-          # Fallback if no "## " headings: last 100 lines
-          if [ ! -s latest.md ]; then tail -n 100 CHANGELOG.md > latest.md; fi
+          [ -s latest.md ] || tail -n 100 CHANGELOG.md > latest.md
 
-          # Single-line title output
-          title="$(head -n1 latest.md | sed 's/^##[[:space:]]*//')"
-          echo "title=$title" >> "$GITHUB_OUTPUT"
-
-          # Prepare a trimmed description to keep embeds safe (<4096 chars)
-          tail -n +2 latest.md | head -c 3800 > description.txt
-
-          # Proper multiline output (UNQUOTED delimiter; closing token alone on a line)
-          {
-            echo "description<<EOF"
-            cat description.txt
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+      # Build the Discord webhook JSON payload (no outputs/env files needed)
+      - name: Build webhook payload
+        run: |
+          python3 - <<'PY' > payload.json
+          import os, json
+          title = "Changelog Update"
+          desc = ""
+          with open("latest.md", "r", encoding="utf-8", errors="ignore") as f:
+              lines = f.read().splitlines()
+          if lines:
+              title = lines[0].lstrip("# ").strip() or title
+              desc = "\n".join(lines[1:]) if len(lines) > 1 else ""
+          desc = desc[:3800]  # keep under Discord's ~4096-char embed desc limit
+          repo = os.environ.get("GITHUB_REPOSITORY","")
+          sha  = os.environ.get("GITHUB_SHA","")
+          payload = {
+            "embeds": [{
+              "title": title,
+              "description": desc,
+              "url": f"https://github.com/{repo}/commit/{sha}"
+            }]
+          }
+          print(json.dumps(payload))
+          PY
 
       - name: Post to Discord
         uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
           username: "Changelog Bot"
-          embed-title: ${{ steps.extract.outputs.title }}
-          embed-description: ${{ steps.extract.outputs.description }}
-          embed-url: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-          filename: latest.md
+          raw-data: payload.json         # send our JSON directly
+          filename: latest.md            # also attach the full text
