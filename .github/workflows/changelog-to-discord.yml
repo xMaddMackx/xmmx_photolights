@@ -2,9 +2,9 @@ name: Changelog → Discord
 
 on:
   push:
-    branches: [main]            
+    branches: [main]            # change if your default branch differs
     paths:
-      - 'CHANGELOG.md'          
+      - 'CHANGELOG.md'
 
 jobs:
   notify:
@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Extract the newest section (first "## " block) from CHANGELOG.md
       - id: extract
         name: Extract latest changelog section
         run: |
@@ -26,11 +27,11 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Post to Discord
-        uses: tsickert/discord-webhook@v7
+        uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.WEBHOOK_URL }}
           username: "Changelog Bot"
           embed-title: ${{ steps.extract.outputs.title }}
           embed-description: ${{ steps.extract.outputs.description }}
           embed-url: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
-          filename: latest.md                      
+          filename: latest.md
