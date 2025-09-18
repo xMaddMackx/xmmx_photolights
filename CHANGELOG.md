@@ -1,5 +1,4 @@
-@here
-## xmmx_photolights v1.3 - 2025-09-15:
+## xmmx_photolights | Update - v1.3
 ### Added
 - `server/webhook.lua` for Discord notifications. Set your Discord webhook URL (leave as `''` to disable).
 ### Fixed
