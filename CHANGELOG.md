@@ -1,4 +1,4 @@
-## [1.3.0] - 2025-09-15
+## [1.3] - 2025-09-15
 
 ### Added
 - `server/webhook.lua` for Discord notifications. Set your Discord webhook URL (leave as `''` to disable).
