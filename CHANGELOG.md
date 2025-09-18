@@ -1,3 +1,13 @@
-Update v1.3 - 9/15/2025:
-- Fixed issue with target and light settings not being applied after a server restart or if a prop is placed other players are out of the culling radius.
-- Added server/webhook.lua. Be sure to add your discord webhook url, or leave as '' to disable.
+## [1.3.0] - 2025-09-15
+
+### Added
+- `server/webhook.lua` for Discord notifications. Set your Discord webhook URL (leave as `''` to disable).
+
+### Fixed
+- Target and light settings now persist after server restarts and when a prop is placed while other players are outside the culling radius.
+
+### Performance
+- Improved optimization near light props; `resmon` now reports `0.00` when you’re outside the detection radius.
+
+### TODO
+- Replace radius detection with PolyZone-based detection.
