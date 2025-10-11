@@ -31,14 +31,19 @@ jobs:
                   desc  = "\n".join(lines[1:]) if len(lines) > 1 else ""
           except FileNotFoundError:
               pass
+
+          # ✅ Mention @everyone at the top-level content
           payload = {
+              "content": "@everyone",
+              "allowed_mentions": { "parse": ["everyone"] },
               "embeds": [{
                   "title": title,
                   "description": desc[:3800],
                   "url": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY','')}/commit/{os.environ.get('GITHUB_SHA','')}",
-                  "color": 5763719   # green (#57F287). Use 65280 for #00FF00
+                  "color": 5763719
               }]
           }
+
           with open("payload.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False)
           PY
